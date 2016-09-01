@@ -19,6 +19,12 @@ REM personal movies
 echo personal movies
 xcopy "D:\personalbackup\personal videos" "Q:\PersonalBackup\personal videos" /e /c /q /r /y /z /d /i
 
+REM music (both ways)
+
+xcopy "D:\My Music\Pop" "Q:\Music" /e /c /q /r /y /z /d /i
+xcopy "Q:\Music" "D:\My Music\Pop" /e /c /q /r /y /z /d /i
+
+
 REM xcopy D:\Users\willallen\Documents w:\docs /e /c /q /r /y /z /d /i
 rem xcopy C:\Detica w:\Detica /e /c /q /r /y /z /d /i
 net use q: /delete
