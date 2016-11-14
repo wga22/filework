@@ -5,7 +5,7 @@ import shutil
 import logging
 
 #constants
-photodirs = ["C:/Users/Will/SkyDrive/Pictures/MEMORIES", "C:/Users/Will/Pictures/Memories 1","d:/temp/pics_from_emails","d:/temp/full_gmail_attachment_dump"]
+photodirs = ["D:\personalbackup\My Pictures"]
 #photodirs = ["d:/temp/pics_from_emails"]
 logfilePath = "d:/temp/"
 targetMoveFolder = "D:/temp/dupe_pics/"
