@@ -1,7 +1,7 @@
 c:
 
 REM create network connection
-net use q: \\WDTVLIVEHUB\wdTVLiveHub
+net use q: \\tenda\mediahub
 
 REM docs
 echo docs
