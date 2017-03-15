@@ -1,0 +1,7 @@
+
+
+https://jpsoft.com/help/sendmail.htm
+
+sendmail "will.allen@gmail.com" Test Hello!
+
+SENDMAIL /SMTP=smtp.mail.yahoo.com /USER=wga22@yahoo.com "will.allen@gmail.com" mediahub space issue [ text | @msgfile ]
