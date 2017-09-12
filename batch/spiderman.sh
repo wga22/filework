@@ -9,3 +9,4 @@ apt-get dist-upgrade -y
 apt-get install -y git build-essential python-dev python-pip python-imaging
 apt-get clean -y
 
+wget https://www.sslforfree.com/create?verification=d05jdpBQn8Q3luVmh24Q9Oq0sC6VaB3kvHLBU4Rx80I
