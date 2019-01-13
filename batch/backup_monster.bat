@@ -6,8 +6,8 @@ echo docs
 xcopy "C:\Users\Will\Documents" "D:\personalbackup\documents" /e /c /q /r /y /z /d /i
 
 rem PICS
-echo pics - google
-xcopy "C:\Users\Will\Google Drive\Google Photos" "D:\personalbackup\Google Photos-Will" /e /c /q /r /y /z /d /i
+echo pics - google DISABLED
+rem xcopy "C:\Users\Will\Google Drive\Google Photos" "D:\personalbackup\Google Photos-Will" /e /c /q /r /y /z /d /i
 
 REM music (both ways)
 xcopy "D:\My Music\Pop" "Q:\Music" /e /c /q /r /y /z /d /i
