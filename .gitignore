@@ -44,3 +44,4 @@ Temporary Items
 python_commandline/badsongs.txt
 *.txt
 python_commandline/school_form.py
+*.json
