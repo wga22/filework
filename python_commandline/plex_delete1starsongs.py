@@ -1,3 +1,7 @@
+'''
+Feb 2021 - deletes all songs from plex attached via JSON that are rated 1 star
+
+'''
 import re
 import glob
 import hashlib
@@ -6,7 +10,7 @@ import shutil
 import logging
 import email
 import mimetypes
-#from plexapi.myplex import MyPlexAccount
+#from plexapi.myplex import MyPlexAccount   https://python-plexapi.readthedocs.io/en/latest/index.html
 from plexapi.server import PlexServer
 import json
 
