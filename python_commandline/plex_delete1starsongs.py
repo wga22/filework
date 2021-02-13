@@ -23,9 +23,9 @@ with open('plex_credentials.json') as json_file:
     plex = PlexServer(plex_cred['baseurl'], plex_cred['token'])
     for playlist in plex.playlists():
         if("BAD_MUSIC" == playlist.title):
-            print (playlist.title)
+            print ("removing all songs from: ", playlist.title)
             for song in playlist.items():
-                print(song.artist().title , " " ,  song.title )
+                print(song.artist().title , " - " ,  song.title )
                 song.delete()
 
     
