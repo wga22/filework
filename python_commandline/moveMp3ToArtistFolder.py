@@ -4,6 +4,7 @@ import os
 import shutil
 import logging
 import re
+import eyed3
 
 #constants
 #moviedirs = ["D:/video/family", "D:/video/movieseries", "D:/video/documentaries", "D:/video/unwatched", "D:/video/archivemovies"]
@@ -12,7 +13,7 @@ import re
 baseMusicDirs = ["d:/temp/fixmusic2"]
 logfilePath = "d:/temp/"
 allMovieFiles = []
-targetMoveFolder = "D:/temp/badmusic/"
+targetMoveFolder = "D:/temp/musicfolders/"
 #reFileExtention = re.compile('\.{mkv|mp4|avi}')
 reFileExtention = re.compile('\.(mp3)')
 #reYear= re.compile([\[|\(]\d\d\d\d\)|\])
@@ -31,7 +32,7 @@ def prepLogger(appName):
     hdlr.setFormatter(formatter)
     _logger.addHandler(hdlr) 
     _logger.addHandler(logging.StreamHandler())
-    _logger.setLevel(logging.INFO)
+    _logger.setLevel(logging.DEBUG)
     return _logger
 
 #yield os.path.join(root, d, f)
@@ -60,45 +61,28 @@ def simpleMovieName(fileName):
     #logger.debug('clean: ' + cleansedName)
     return cleansedName
             
-def findDupes():
-    matchCount = 0
-    for file_name in allMovieFiles:
-        #logger.debug("file:" + file_name[0])
-        #if re.search(reFileExtention, file_name[0]) is not None:
-        if re.search(reFileExtention, file_name[0]) is not None:
-            filehash = simpleMovieName(file_name[0])
-            if filehash in filehashes:
-                matchCount += 1
-                #logger.info("collision! " + file_name[0] + "  == " + filehash)
-                #best to move the file that has (1) at end
-                fileToMove = file_name[1]
-                if re.search(reOneInParens, filehashes[filehash]) is not None:
-                    logger.debug("has 111111 " + filehashes[filehash])
-                    fileToMove=filehashes[filehash]
-                duplicates.append({"filepath":fileToMove, "hash": filehash, "original":file_name[0]})
-                logger.info("DUPE: " + file_name[1] + " ------ " + filehashes[filehash])
-            else:
-                filehashes[filehash] = file_name[1]
-                #logger.debug ('new file found hash: ' + filehash + " for filename: " + file_name[1])
-    logger.info('%(hits)i / %(all)i files' % {'hits': matchCount ,'all':len(allMovieFiles)})
 
-def moveDupes() :
+def moveToFolder() :
 # do work with the duplicates
-    for x in duplicates:
-        outputDetails = "D file: " + x["filepath"] #+ "\n original: " + x["original"]
-        logger.debug("working on this:" + outputDetails)
-        logger.info(outputDetails)
-        try:
-            shutil.move(x["filepath"], targetMoveFolder)
-        except (IOError) as why:
-            logger.error(x["filepath"] + " already exists in target, try removing instead")
-            #os.remove(x["filepath"])        
+    logger.debug(str(len(allMovieFiles)) + " to " + targetMoveFolder)
+    for file in allMovieFiles:
+        fullPathFile = file[1]
+        logger.debug(fullPathFile)
+        af = eyed3.load(fullPathFile)
+        print (af.tag.artist)
+        
+        newFolder = targetMoveFolder + af.tag.artist
+        ArtistFolderExists = os.path.exists(newFolder)
+        if ArtistFolderExists is False:
+            logger.debug("make new folder: " + newFolder)
+            os.mkdir(newFolder)
+        shutil.move(fullPathFile, newFolder)
 
 
 ###############################################
 ##MAIN
 #global vars
-logger = prepLogger("dupeMovieFile")    
+logger = prepLogger("musicToFolder")    
 filehashes = dict()
 duplicates = list()
 
@@ -106,8 +90,9 @@ logger.info("load a list of files")
 
 for md in baseMusicDirs:
     all_files_from_path_gen(md)
-findDupes()
-moveDupes()
+
+moveToFolder()
+
 logger.info("size of hashes file:" + str(len(filehashes)))
 
 '''

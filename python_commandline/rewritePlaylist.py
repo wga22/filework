@@ -1,27 +1,32 @@
+'''
+load a playlist file
+search for the actual location of the song (take liberties?)
+rewrite out a new playlist with found songs
+'''
+
 import glob
 import hashlib
 import os
 import shutil
 import logging
 import re
+from pathlib import Path
 
 #constants
-#moviedirs = ["D:/video/family", "D:/video/movieseries", "D:/video/documentaries", "D:/video/unwatched", "D:/video/archivemovies"]
 #baseMusicDirs = ["D:/My Music/Pop", "D:/temp/google_music_export/Tracks"]
-#baseMusicDirs = ["D:/My Music/Pop"]
-baseMusicDirs = ["d:/temp/fixmusic2"]
+baseMusicDirs = ["D:/My Music/Pop"]
+oldPlaylistFile="D:/temp/playlistwork/playlist/garage2021.m3u"
+newPlaylistFile="D:/temp/garage2021.m3u"
 logfilePath = "d:/temp/"
-allMovieFiles = []
-targetMoveFolder = "D:/temp/badmusic/"
-#reFileExtention = re.compile('\.{mkv|mp4|avi}')
+allMusicFiles = []
+
 reFileExtention = re.compile('\.(mp3)')
 #reYear= re.compile([\[|\(]\d\d\d\d\)|\])
 reYear= re.compile( '[\[|\(]\d\d\d\d[\]|\)]' )
 reThe = re.compile('^the ', re.IGNORECASE)
 reSQBrackets = re.compile('\[.*\]', re.IGNORECASE)
 reCharOnly = re.compile('![a-z]')
-reOneInParens = re.compile('\(1\)')
-#reFileExtention = re.compile('\.mkv')
+reComment = re.compile('^#.*')
 #reFileExtention = re.compile('.*')
 
 def prepLogger(appName):
@@ -31,7 +36,7 @@ def prepLogger(appName):
     hdlr.setFormatter(formatter)
     _logger.addHandler(hdlr) 
     _logger.addHandler(logging.StreamHandler())
-    _logger.setLevel(logging.INFO)
+    _logger.setLevel(logging.DEBUG)
     return _logger
 
 #yield os.path.join(root, d, f)
@@ -43,7 +48,7 @@ def all_files_from_path_gen(p):
             #logger.debug("add directory: " +d)
             #retfiles.extend(all_files_from_path_gen(root+d))
         for f in files:
-            allMovieFiles.append([f, (root+"/"+f)])
+            allMusicFiles.append([f, (root+"/"+f)])
 
 def simpleMovieName(fileName):
     cleansedName = fileName.lower()
@@ -54,15 +59,68 @@ def simpleMovieName(fileName):
     #cleansedName = re.sub(reSQBrackets, '', cleansedName)
     cleansedName = re.sub(reCharOnly, '', cleansedName)
     cleansedName = re.sub(re.compile('\.'), '', cleansedName)
+    cleansedName = re.sub(re.compile('\r'), '', cleansedName)
+    cleansedName = re.sub(re.compile('\n'), '', cleansedName)
     cleansedName = re.sub(re.compile('^copyof'), '', cleansedName)
-    cleansedName = re.sub(reOneInParens, '', cleansedName)
     #reFileExtention
     #logger.debug('clean: ' + cleansedName)
     return cleansedName
-            
-def findDupes():
+
+def baseFile(fileName):
+    p = Path(fileName)
+    #logger.debug(p)
+    return p.name
+
+
+def writeNewPlaylist():
     matchCount = 0
-    for file_name in allMovieFiles:
+
+    #make hash of the cleaned filenames
+    for file_name in allMusicFiles:
+        hashName = simpleMovieName(file_name[0])
+        filehashes[hashName] = file_name[1]
+        logger.debug(hashName + " -full file path:" + file_name[1])
+
+    # read the playlist
+    songsToFind = list()
+    oldPlaylist = open(oldPlaylistFile, "r")
+    newPlaylist = open(newPlaylistFile, "w")
+    for x in oldPlaylist:
+        if re.search(reComment, x) is None and len(x)>0:
+            songOnly = simpleMovieName(baseFile(x))
+            #logger.debug("add Song to List %s ", songOnly)
+            if songOnly in filehashes :
+                songsToFind.append(songOnly)
+                newPlaylist.write(filehashes[songOnly] + "\n")
+                logger.info("found %s for the list", songOnly)
+            else:
+                logger.info("couldnt find %s", songOnly)
+
+
+
+    oldPlaylist.close()
+    newPlaylist.close()
+    
+   
+
+    
+    
+    
+    
+'''
+            for z in filehashes:
+                #logger.debug("[" + z + "]=?[" + songOnly + "]")
+                #logger.debug(str(len(z)) + "=?" + str(len(songOnly)))
+                if z == songOnly:
+                    logger.debug("YIPPPPEE" + songOnly)
+
+
+    for x in songsToFind:
+        simplifiedName = simpleMovieName(songsToFind[x])
+        if simplifiedName in 
+
+
+    for file_name in allMusicFiles:
         #logger.debug("file:" + file_name[0])
         #if re.search(reFileExtention, file_name[0]) is not None:
         if re.search(reFileExtention, file_name[0]) is not None:
@@ -80,34 +138,22 @@ def findDupes():
             else:
                 filehashes[filehash] = file_name[1]
                 #logger.debug ('new file found hash: ' + filehash + " for filename: " + file_name[1])
-    logger.info('%(hits)i / %(all)i files' % {'hits': matchCount ,'all':len(allMovieFiles)})
-
-def moveDupes() :
-# do work with the duplicates
-    for x in duplicates:
-        outputDetails = "D file: " + x["filepath"] #+ "\n original: " + x["original"]
-        logger.debug("working on this:" + outputDetails)
-        logger.info(outputDetails)
-        try:
-            shutil.move(x["filepath"], targetMoveFolder)
-        except (IOError) as why:
-            logger.error(x["filepath"] + " already exists in target, try removing instead")
-            #os.remove(x["filepath"])        
-
+    logger.info('%(hits)i / %(all)i files' % {'hits': matchCount ,'all':len(allMusicFiles)})
+'''
 
 ###############################################
 ##MAIN
 #global vars
-logger = prepLogger("dupeMovieFile")    
+logger = prepLogger("rewritePlaylistFile")    
 filehashes = dict()
 duplicates = list()
 
 logger.info("load a list of files")
 
+#pull full music library
 for md in baseMusicDirs:
     all_files_from_path_gen(md)
-findDupes()
-moveDupes()
+writeNewPlaylist()
 logger.info("size of hashes file:" + str(len(filehashes)))
 
 '''
