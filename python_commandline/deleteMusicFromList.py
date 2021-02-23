@@ -11,7 +11,7 @@ import re
 #constants
 baseMusicDirs = ["D:/My Music/Pop"]
 logfilePath = "d:/temp/"
-songsToRemoveFile = "d:/temp/playlistwork/badsongs_2021-2.txt"
+songsToRemoveFile = "y:/plex_delete.log"
 targetMoveFolder = "D:/temp/badmusic/"
 
 #Globals
