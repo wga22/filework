@@ -20,10 +20,13 @@ import mimetypes
 #from plexapi.myplex import MyPlexAccount   https://python-plexapi.readthedocs.io/en/latest/index.html
 from plexapi.server import PlexServer
 import json
-newPlaylistFile="D:/temp/favoritesfromplex.m3u"
-newPlaylist = open(newPlaylistFile, "w")
+
+newPlaylistFileDir="D:/temp/playlistwork/playlist/"
+#newPlaylistFile= newPlaylistFileDir + "favoritesfromplex.m3u"
+
 cleanFilePath = re.compile('\/media\/ten\/music\/Pop') 
 reQuotes = re.compile('"')
+reWhitespace = re.compile('\s')
 basePath = "mnt/NAS/Spiderman"
 # BEFORE: /media/ten/music/Pop/The Who/The Who 
 # AFTER: mnt/NAS/Spiderman/Billie Eilish/Billie Eilish - everything i wanted.mp3
@@ -41,27 +44,53 @@ with open('plex_credentials.json') as json_file:
     #print(plex_cred)
     #print(plex_cred['baseurl'])
     plex = PlexServer(plex_cred['baseurl'], plex_cred['token'])
-    newPlaylist.write("[")
     for playlist in plex.playlists():
-        if("4 stars" == playlist.title):
-            print ("making playlist all songs from: ", playlist.title)
+        playlistLen = 0        
+        try:
+            playlistLen = len(playlist.items())
+        except:
+            print("Cannot get the length of songs in ", playlist.title)
+        #make for music playlists, with more than 10, less than 500
+        if playlistLen < 500 and playlistLen > 10 and ('track' == playlist.items()[0].TYPE):
+            listName=re.sub(reWhitespace, "",playlist.title)
+            playFileName=newPlaylistFileDir + listName + ".json"
+            print ("making playlist all songs from: ", playlist.title, " ", playFileName, " len:", str(playlistLen))
+            newPlaylist = open(playFileName , "w")
+            newPlaylist.write("[")
+            counter=playlistLen
             for song in playlist.items():
+                print("writing out the playlist ",playlist.title )
                 #print(song.artist().title , " - " ,  song.title )
                 # working url, title, key
                 fileName = song.media[0].parts[0].file
                 fileName = re.sub(cleanFilePath, basePath, fileName)
                 #print(song.media[0].parts[0].file , " - " ,  fileName )
-                element = '{"service":"mpd","uri":"'+clearQuotes(fileName)+'","title":"'+clearQuotes(song.title)+'", "artist":"'+clearQuotes(song.artist().title)+'"},\n'
+                element = '{"service":"mpd","uri":"'+clearQuotes(fileName)+'","title":"'+clearQuotes(song.title)+'", "artist":"'+clearQuotes(song.artist().title)+'"}'
                 print(element)
-                newPlaylist.write(element)
+                counter -= 1
+                if counter > 0:
+                    element += ',\n'
+                try:
+                    newPlaylist.write(element)
+                except:
+                    print("error writing %s", element)
+                    
                 #element = "{"+selection.media[0].parts[0].file.split('/')[-1]+"}"
                 #fileItem = plex.fetchItem(song.key)
                 #print(fileItem.url  )
                 #TODO - make it actually find the file first
-                #newPlaylist.write(PLAYLISTROOT + song.artist().title +"/"+ song.artist().title + " - " +  song.title + .mp3\n")
-    newPlaylist.write("]")
-    newPlaylist.close()
+            newPlaylist.write("]")
+            newPlaylist.close()
+        
+        '''
+        playlistLen = len(playlist.items())
+        if playlistLen < 500:
+            playFileName=newPlaylistFileDir + playlist.title + ".json"
+            print ("making playlist all songs from: ", playlist.title, " ", playFileName, " len:", playlistLen)
 
+
+        if playlistLen < 500:
+'''
 '''
     for song in plex.search('various', 'artist'):
         if(song.TYPE=='track'):
