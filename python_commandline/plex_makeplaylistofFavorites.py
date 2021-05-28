@@ -53,7 +53,7 @@ with open('plex_credentials.json') as json_file:
         #make for music playlists, with more than 10, less than 500
         if playlistLen < 500 and playlistLen > 10 and ('track' == playlist.items()[0].TYPE):
             listName=re.sub(reWhitespace, "",playlist.title)
-            playFileName=newPlaylistFileDir + listName + ".json"
+            playFileName=newPlaylistFileDir + listName + "_plex"
             print ("making playlist all songs from: ", playlist.title, " ", playFileName, " len:", str(playlistLen))
             newPlaylist = open(playFileName , "w")
             newPlaylist.write("[")
