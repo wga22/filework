@@ -1,5 +1,5 @@
 '''
-June 2021 - list songs in each playlist and songs with each rating
+June 2021 - list songs in each playlist and songs with each rating - data manually exported to Plex Music Library Stats in google docs
 
 ❤️ Artist  has songs:  4152
 Cannot get the length of songs in  ❤️ Tracks
@@ -86,6 +86,9 @@ with open('plex_credentials.json') as json_file:
     plex = PlexServer(plex_cred['baseurl'], plex_cred['token'])
     playlistCounts()
     starCounts(plex.library)
+    
+    #TODO - write data directly to google docs!!https://erikrood.com/Posts/py_gsheets.html
+    #TODO - or write data to DB to pull from apache?!
     
         
 '''
