@@ -30,7 +30,6 @@ reWhitespace = re.compile('\s')
 basePath = "mnt/NAS/Spiderman"
 # BEFORE: /media/ten/music/Pop/The Who/The Who 
 # AFTER: mnt/NAS/Spiderman/Billie Eilish/Billie Eilish - everything i wanted.mp3
-PLAYLISTROOT="D:/My Music/Pop/"
 
 def clearQuotes(fieldValue):
 	return re.sub(reQuotes, "", fieldValue)
