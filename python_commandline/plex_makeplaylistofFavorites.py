@@ -22,6 +22,8 @@ from plexapi.server import PlexServer
 import json
 
 newPlaylistFileDir="D:/temp/playlistwork/playlist/"
+winampPlaylistFolder="D:/My Music/playlists/"
+winampSongDir="D:/My Music/Pop"
 #newPlaylistFile= newPlaylistFileDir + "favoritesfromplex.m3u"
 
 cleanFilePath = re.compile('\/media\/ten\/music\/Pop') 
@@ -53,8 +55,11 @@ with open('plex_credentials.json') as json_file:
         if playlistLen < 500 and playlistLen > 10 and ('track' == playlist.items()[0].TYPE):
             listName=re.sub(reWhitespace, "",playlist.title)
             playFileName=newPlaylistFileDir + listName + "_plex"
+            winPlayFileName=winampPlaylistFolder + listName + ".m3u"
             print ("making playlist all songs from: ", playlist.title, " ", playFileName, " len:", str(playlistLen))
             newPlaylist = open(playFileName , "w")
+            newWinampPlaylist = open(winPlayFileName , "w")
+            
             newPlaylist.write("[")
             counter=playlistLen
             for song in playlist.items():
@@ -62,6 +67,7 @@ with open('plex_credentials.json') as json_file:
                 #print(song.artist().title , " - " ,  song.title )
                 # working url, title, key
                 fileName = song.media[0].parts[0].file
+                winampFileName =  re.sub(cleanFilePath, winampSongDir, fileName)
                 fileName = re.sub(cleanFilePath, basePath, fileName)
                 #print(song.media[0].parts[0].file , " - " ,  fileName )
                 element = '{"service":"mpd","uri":"'+clearQuotes(fileName)+'","title":"'+clearQuotes(song.title)+'", "artist":"'+clearQuotes(song.artist().title)+'"}'
@@ -71,6 +77,7 @@ with open('plex_credentials.json') as json_file:
                     element += ',\n'
                 try:
                     newPlaylist.write(element)
+                    newWinampPlaylist.write(clearQuotes(winampFileName)+'\n')
                 except:
                     print("error writing %s", element)
                     
@@ -80,6 +87,7 @@ with open('plex_credentials.json') as json_file:
                 #TODO - make it actually find the file first
             newPlaylist.write("]")
             newPlaylist.close()
+            newWinampPlaylist.close()
         
         '''
         playlistLen = len(playlist.items())
