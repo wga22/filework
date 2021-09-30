@@ -89,7 +89,7 @@ with open('plex_credentials.json') as json_file:
     
     #TODO - write data directly to google docs!!https://erikrood.com/Posts/py_gsheets.html
     #TODO - or write data to DB to pull from apache?!
-    
+    #TODO - write it to a file, so cut paste to google docs easier
         
 '''
         playlistLen = len(playlist.items())
