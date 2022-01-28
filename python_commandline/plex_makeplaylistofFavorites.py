@@ -1,4 +1,5 @@
 '''
+Nov 2021 - write out all playlists to both winamp and volumio
 May 2021 - Makes a playlist from 4 star files
 
 [
@@ -21,15 +22,15 @@ import mimetypes
 from plexapi.server import PlexServer
 import json
 
-newPlaylistFileDir="D:/temp/playlistwork/playlist/"
+volumioPlaylistDirName="D:/temp/playlistwork/playlist/"
 winampPlaylistFolder="D:/My Music/playlists/"
-winampSongDir="D:/My Music/Pop"
-#newPlaylistFile= newPlaylistFileDir + "favoritesfromplex.m3u"
+winampSongDirName="D:/My Music/Pop"
+#volumioPlaylistFile= volumioPlaylistDirName + "favoritesfromplex.m3u"
 
-cleanFilePath = re.compile('\/media\/ten\/music\/Pop') 
+rePlexPathPrefix = re.compile('\/media\/ten\/music\/Pop') 
 reQuotes = re.compile('"')
 reWhitespace = re.compile('\s')
-basePath = "mnt/NAS/Spiderman"
+basePath = "mnt/NAS/spiderman"
 # BEFORE: /media/ten/music/Pop/The Who/The Who 
 # AFTER: mnt/NAS/Spiderman/Billie Eilish/Billie Eilish - everything i wanted.mp3
 
@@ -54,21 +55,21 @@ with open('plex_credentials.json') as json_file:
         #make for music playlists, with more than 10, less than 500
         if playlistLen < 500 and playlistLen > 10 and ('track' == playlist.items()[0].TYPE):
             listName=re.sub(reWhitespace, "",playlist.title)
-            playFileName=newPlaylistFileDir + listName + "_plex"
-            winPlayFileName=winampPlaylistFolder + listName + ".m3u"
-            print ("making playlist all songs from: ", playlist.title, " ", playFileName, " len:", str(playlistLen))
-            newPlaylist = open(playFileName , "w")
-            newWinampPlaylist = open(winPlayFileName , "w")
+            VolumioPLSFileName=volumioPlaylistDirName + listName + "_plex"
+            winVolumioPLSFileName=winampPlaylistFolder + listName + ".m3u"
+            print ("making playlist all songs from: ", playlist.title, " ", VolumioPLSFileName, " len:", str(playlistLen))
+            volumioPlaylist = open(VolumioPLSFileName , "w")
+            winampPlaylist = open(winVolumioPLSFileName , "w")
             
-            newPlaylist.write("[")
+            volumioPlaylist.write("[")
             counter=playlistLen
             for song in playlist.items():
                 print("writing out the playlist ",playlist.title )
                 #print(song.artist().title , " - " ,  song.title )
                 # working url, title, key
                 fileName = song.media[0].parts[0].file
-                winampFileName =  re.sub(cleanFilePath, winampSongDir, fileName)
-                fileName = re.sub(cleanFilePath, basePath, fileName)
+                winampFileName =  re.sub(rePlexPathPrefix, winampSongDirName, fileName)
+                fileName = re.sub(rePlexPathPrefix, basePath, fileName)
                 #print(song.media[0].parts[0].file , " - " ,  fileName )
                 element = '{"service":"mpd","uri":"'+clearQuotes(fileName)+'","title":"'+clearQuotes(song.title)+'", "artist":"'+clearQuotes(song.artist().title)+'"}'
                 print(element)
@@ -76,8 +77,9 @@ with open('plex_credentials.json') as json_file:
                 if counter > 0:
                     element += ',\n'
                 try:
-                    newPlaylist.write(element)
-                    newWinampPlaylist.write(clearQuotes(winampFileName)+'\n')
+                    volumioPlaylist.write(element)
+                    # TODO - since running on windows, test for the file first on windows?
+                    winampPlaylist.write(clearQuotes(winampFileName)+'\n')
                 except:
                     print("error writing %s", element)
                     
@@ -85,15 +87,15 @@ with open('plex_credentials.json') as json_file:
                 #fileItem = plex.fetchItem(song.key)
                 #print(fileItem.url  )
                 #TODO - make it actually find the file first
-            newPlaylist.write("]")
-            newPlaylist.close()
-            newWinampPlaylist.close()
+            volumioPlaylist.write("]")
+            volumioPlaylist.close()
+            winampPlaylist.close()
         
         '''
         playlistLen = len(playlist.items())
         if playlistLen < 500:
-            playFileName=newPlaylistFileDir + playlist.title + ".json"
-            print ("making playlist all songs from: ", playlist.title, " ", playFileName, " len:", playlistLen)
+            VolumioPLSFileName=volumioPlaylistDirName + playlist.title + ".json"
+            print ("making playlist all songs from: ", playlist.title, " ", VolumioPLSFileName, " len:", playlistLen)
 
 
         if playlistLen < 500:
