@@ -7,10 +7,10 @@ import re
 
 #constants
 #moviedirs = ["D:/video/family", "D:/video/movieseries", "D:/video/documentaries", "D:/video/unwatched", "D:/video/archivemovies"]
-moviedirs = ["Z:/video"]
+dir1 = "Z:/video"
+dir2 = "D:/video"
 logfilePath = "d:/temp/"
-allMovieFiles = []
-targetMoveFolder = "D:/temp/delme/"
+
 #reFileExtention = re.compile('\.{mkv|mp4|avi}')
 reFileExtention = re.compile('\.(mkv|mp4|avi)')
 #reYear= re.compile([\[|\(]\d\d\d\d\)|\])
@@ -27,19 +27,20 @@ def prepLogger(appName):
 	hdlr.setFormatter(formatter)
 	_logger.addHandler(hdlr) 
 	_logger.addHandler(logging.StreamHandler())
-	_logger.setLevel(logging.INFO)
+	_logger.setLevel(logging.DEBUG)
 	return _logger
 
 #yield os.path.join(root, d, f)
 def all_files_from_path_gen(p):
-	print("all files: " + p)
-	retfiles = []
-	for root, dirs, files in os.walk(p):
-		for d in dirs:
-			logger.debug("add directory: " +d)
-			#retfiles.extend(all_files_from_path_gen(root+d))
-		for f in files:
-			allMovieFiles.append([f, (root+"/"+f)])
+    print("all files: " + p)
+    retfiles = []
+    for root, dirs, files in os.walk(p):
+        for d in dirs:
+            #logger.debug("add directory: " +d)
+        #retfiles.extend(all_files_from_path_gen(root+d))
+            for f in files:
+                retfiles.append([f, (root+"/"+f)])
+    return retfiles
 
 def simpleMovieName(fileName):
 	cleansedName = fileName.lower()
@@ -93,10 +94,12 @@ duplicates = list()
 
 logger.info("load a list of files")
 
-for md in moviedirs:
-	all_files_from_path_gen(md)
+allMovieFiles1 = all_files_from_path_gen(dir1)
+logger.debug('dir 1 len: ' + str(len(allMovieFiles1)))
+allMovieFiles2 = all_files_from_path_gen(dir2)
+logger.debug('dir 2 len: ' + str(len(allMovieFiles2)))
 
-findDupes()
+#findDupes()
 
 #moveDupes()
 

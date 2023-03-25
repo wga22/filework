@@ -1,5 +1,8 @@
 '''
 June 2021 - list songs in each playlist and songs with each rating - data manually exported to Plex Music Library Stats in google docs
+https://docs.google.com/spreadsheets/d/1C-OpKVWlOcQPE0g0j1XoIsn-9ru6Fhmnd4IiHH9dpZk/edit#gid=0
+
+reset token by opening "XML" of a doc and looking at end of querystring.
 
 ❤️ Artist  has songs:  4152
 Cannot get the length of songs in  ❤️ Tracks

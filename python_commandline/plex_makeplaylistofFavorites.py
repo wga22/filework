@@ -24,13 +24,16 @@ import json
 
 volumioPlaylistDirName="D:/temp/playlistwork/playlist/"
 winampPlaylistFolder="D:/My Music/playlists/"
+moodePlaylistDirName="D:/temp/playlistwork/playlist/"
 winampSongDirName="D:/My Music/Pop"
+SongDirName="D:/My Music/Pop"
 #volumioPlaylistFile= volumioPlaylistDirName + "favoritesfromplex.m3u"
 
 rePlexPathPrefix = re.compile('\/media\/ten\/music\/Pop') 
 reQuotes = re.compile('"')
 reWhitespace = re.compile('\s')
-basePath = "mnt/NAS/spiderman"
+volBasePath = "mnt/NAS/spiderman"
+moodeBasePath = "NAS/Spiderman-POP"
 # BEFORE: /media/ten/music/Pop/The Who/The Who 
 # AFTER: mnt/NAS/Spiderman/Billie Eilish/Billie Eilish - everything i wanted.mp3
 
@@ -53,36 +56,44 @@ with open('plex_credentials.json') as json_file:
         except:
             print("Cannot get the length of songs in ", playlist.title)
         #make for music playlists, with more than 10, less than 500
-        if playlistLen < 500 and playlistLen > 10 and ('track' == playlist.items()[0].TYPE):
+        if playlistLen < 3000 and playlistLen > 10 and ('track' == playlist.items()[0].TYPE):
             listName=re.sub(reWhitespace, "",playlist.title)
             VolumioPLSFileName=volumioPlaylistDirName + listName + "_plex"
             winVolumioPLSFileName=winampPlaylistFolder + listName + ".m3u"
+            moodePLSFileName= moodePlaylistDirName + "NAS_"+ listName + ".m3u"
             print ("making playlist all songs from: ", playlist.title, " ", VolumioPLSFileName, " len:", str(playlistLen))
             volumioPlaylist = open(VolumioPLSFileName , "w")
             winampPlaylist = open(winVolumioPLSFileName , "w")
+            moodePlaylist = open(moodePLSFileName , "w")
+            
             
             volumioPlaylist.write("[")
             counter=playlistLen
             for song in playlist.items():
                 print("writing out the playlist ",playlist.title )
-                #print(song.artist().title , " - " ,  song.title )
-                # working url, title, key
-                fileName = song.media[0].parts[0].file
-                winampFileName =  re.sub(rePlexPathPrefix, winampSongDirName, fileName)
-                fileName = re.sub(rePlexPathPrefix, basePath, fileName)
-                #print(song.media[0].parts[0].file , " - " ,  fileName )
-                element = '{"service":"mpd","uri":"'+clearQuotes(fileName)+'","title":"'+clearQuotes(song.title)+'", "artist":"'+clearQuotes(song.artist().title)+'"}'
-                print(element)
-                counter -= 1
-                if counter > 0:
-                    element += ',\n'
                 try:
-                    volumioPlaylist.write(element)
-                    # TODO - since running on windows, test for the file first on windows?
-                    winampPlaylist.write(clearQuotes(winampFileName)+'\n')
+                    # print(song.artist().title , " - " ,  song.title )
+                    # working url, title, key
+                    #print("parts: " , song.media[0].parts[0])
+                    fileName = song.media[0].parts[0].file
+                    winampFileName =  re.sub(rePlexPathPrefix, winampSongDirName, fileName)
+                    moodeFileName = re.sub(rePlexPathPrefix, moodeBasePath, fileName)
+                    fileName = re.sub(rePlexPathPrefix, volBasePath, fileName)
+                    print(song.media[0].parts[0].file , " - " ,  fileName )
+                    element = '{"service":"mpd","uri":"'+clearQuotes(fileName)+'","title":"'+clearQuotes(song.title)+'", "artist":"'+clearQuotes(song.artist().title)+'"}'
+                    #print(element)
+                    counter -= 1
+                    if counter > 0:
+                        element += ',\n'
+                    try:
+                        volumioPlaylist.write(element)
+                        # TODO - since running on windows, test for the file first on windows?
+                        winampPlaylist.write(clearQuotes(winampFileName)+'\n')
+                        moodePlaylist.write(clearQuotes(moodeFileName)+'\n')
+                    except:
+                        print("error writing %s", element)
                 except:
-                    print("error writing %s", element)
-                    
+                    print("ERROR PULLING THE SONG ", song.title)
                 #element = "{"+selection.media[0].parts[0].file.split('/')[-1]+"}"
                 #fileItem = plex.fetchItem(song.key)
                 #print(fileItem.url  )
@@ -90,6 +101,10 @@ with open('plex_credentials.json') as json_file:
             volumioPlaylist.write("]")
             volumioPlaylist.close()
             winampPlaylist.close()
+            moodePlaylist.close()
+        # testing - just do 1
+        # exit()
+            
         
         '''
         playlistLen = len(playlist.items())
