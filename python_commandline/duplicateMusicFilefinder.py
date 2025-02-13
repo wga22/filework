@@ -5,11 +5,12 @@ import shutil
 import logging
 import re
 
+#---------Python 3-------------
 #constants
 #moviedirs = ["D:/video/family", "D:/video/movieseries", "D:/video/documentaries", "D:/video/unwatched", "D:/video/archivemovies"]
 #baseMusicDirs = ["D:/My Music/Pop", "D:/temp/google_music_export/Tracks"]
-#baseMusicDirs = ["D:/My Music/Pop"]
-baseMusicDirs = ["d:/temp/fixmusic2"]
+baseMusicDirs = ["D:/My Music/Pop"]
+#baseMusicDirs = ["d:/temp/fixmusic2"]
 logfilePath = "d:/temp/"
 allMovieFiles = []
 targetMoveFolder = "D:/temp/badmusic/"
@@ -22,6 +23,8 @@ reParens = re.compile('\(.*\)', re.IGNORECASE)
 reSQBrackets = re.compile('\[.*\]', re.IGNORECASE)
 reCharOnly = re.compile('![a-z]')
 reOneInParens = re.compile('\(1\)')
+reFEAT = re.compile('feat\.([a-z]+ )+',re.IGNORECASE)
+reArtist = re.compile('^[a-z]+\-', re.IGNORECASE)
 #reFileExtention = re.compile('\.mkv')
 #reFileExtention = re.compile('.*')
 
@@ -52,13 +55,17 @@ def simpleMovieName(fileName):
     cleansedName = re.sub(reThe, '', cleansedName)
     cleansedName = re.sub(reFileExtention, '', cleansedName)
     
-    test cleansedName = re.sub(reYear, '', cleansedName)
-    test cleansedName = re.sub(reSQBrackets, '', cleansedName)
-    test cleansedName = re.sub(reParens, '', cleansedName)
+    cleansedName = re.sub(reYear, '', cleansedName)
+    #test cleansedName = re.sub(reSQBrackets, '', cleansedName)
+    #test cleansedName = re.sub(reParens, '', cleansedName)
+    cleansedName = re.sub(reArtist, '', cleansedName)
     cleansedName = re.sub(reCharOnly, '', cleansedName)
     cleansedName = re.sub(re.compile('\.'), '', cleansedName)
     cleansedName = re.sub(re.compile('^copyof'), '', cleansedName)
     cleansedName = re.sub(reOneInParens, '', cleansedName)
+    cleansedName = re.sub(reFEAT, '', cleansedName)
+    
+
     #reFileExtention
     #logger.debug('clean: ' + cleansedName)
     return cleansedName
@@ -110,7 +117,7 @@ logger.info("load a list of files")
 for md in baseMusicDirs:
     all_files_from_path_gen(md)
 findDupes()
-moveDupes()
+#moveDupes()
 logger.info("size of hashes file:" + str(len(filehashes)))
 
 '''

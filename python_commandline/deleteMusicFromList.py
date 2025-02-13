@@ -18,12 +18,12 @@ targetMoveFolder = "D:/temp/badmusic/"
 songsToRemove=dict()
 
 #constants = compile once the re for the filename cleanse
-reFileExtention = re.compile('\.(mp3)')
-reYear= re.compile( '[\[|\(]\d\d\d\d[\]|\)]' )
-reThe = re.compile('^the ', re.IGNORECASE)
-reParens = re.compile('\(.*\)', re.IGNORECASE)
-reSQBrackets = re.compile('\[.*\]', re.IGNORECASE)
-reCharOnly = re.compile('![a-z]')
+reFileExtention = re.compile(r'\.(mp3)')
+reYear= re.compile( r'[\[|\(]\d\d\d\d[\]|\)]' )
+reThe = re.compile(r'^the ', re.IGNORECASE)
+reParens = re.compile(r'\(.*\)', re.IGNORECASE)
+reSQBrackets = re.compile(r'\[.*\]', re.IGNORECASE)
+reCharOnly = re.compile(r'![a-z]')
 
 def prepLogger(appName):
 	_logger = logging.getLogger(appName)
@@ -45,7 +45,7 @@ def simpleMovieName(fileName):
     cleansedName = re.sub(reParens, '', cleansedName)
     cleansedName = re.sub(reSQBrackets, '', cleansedName)
     cleansedName = re.sub(reCharOnly, '', cleansedName)
-    cleansedName = re.sub(re.compile('\.'), '', cleansedName)
+    cleansedName = re.sub(re.compile('\\.'), '', cleansedName)
     cleansedName = re.sub(re.compile(' '), '', cleansedName)
     #reFileExtention
     #logger.debug('clean: ' + cleansedName)
