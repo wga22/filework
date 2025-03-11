@@ -15,6 +15,7 @@ from datetime import datetime
 DAYS_OLD = 400
 # ratings are X2 for 5 stars, 4.0=2 stars
 STAR_RATING=4.0
+RESERVED_SECTIONS = ["dance", "drone"]
 
 def main():
     """Finds all files in Plex libraries that are within the target directory or its subdirectories."""
@@ -26,6 +27,9 @@ def main():
 
             # Sections are different libraries, handle each differently
             for section in plex.library.sections():
+                if section.title.lower() in RESERVED_SECTIONS:
+                    print(f"Skipping reserved section:{section.title}")
+                    continue
                 if section.type == "show":
                     deleteShows(section)
                 elif section.type == "movie":
