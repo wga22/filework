@@ -11,20 +11,20 @@ import re
 #baseMusicDirs = ["D:/My Music/Pop", "D:/temp/google_music_export/Tracks"]
 baseMusicDirs = ["D:/My Music/Pop"]
 #baseMusicDirs = ["d:/temp/fixmusic2"]
-logfilePath = "d:/temp/"
+logfilePath = "c:/work/music/badmusic/"
 allMovieFiles = []
-targetMoveFolder = "D:/temp/badmusic/"
+targetMoveFolder = "c:/work/music/badmusic/"
 #reFileExtention = re.compile('\.{mkv|mp4|avi}')
-reFileExtention = re.compile('\.(mp3)')
+reFileExtention = re.compile('\\.(mp3)')
 #reYear= re.compile([\[|\(]\d\d\d\d\)|\])
-reYear= re.compile( '[\[|\(]\d\d\d\d[\]|\)]' )
+reYear= re.compile( '[\\[|\\(]\\d\\d\\d\\d[\\]|\\)]' )
 reThe = re.compile('^the ', re.IGNORECASE)
-reParens = re.compile('\(.*\)', re.IGNORECASE)
-reSQBrackets = re.compile('\[.*\]', re.IGNORECASE)
+reParens = re.compile('\\(.*\\)', re.IGNORECASE)
+reSQBrackets = re.compile('\\[.*\\]', re.IGNORECASE)
 reCharOnly = re.compile('![a-z]')
-reOneInParens = re.compile('\(1\)')
-reFEAT = re.compile('feat\.([a-z]+ )+',re.IGNORECASE)
-reArtist = re.compile('^[a-z]+\-', re.IGNORECASE)
+reOneInParens = re.compile('\\(1\\)')
+reFEAT = re.compile('feat\\.([a-z]+)+',re.IGNORECASE)
+reArtist = re.compile('^[a-z]+\\-', re.IGNORECASE)
 #reFileExtention = re.compile('\.mkv')
 #reFileExtention = re.compile('.*')
 
@@ -78,15 +78,20 @@ def findDupes():
         if re.search(reFileExtention, file_name[0]) is not None:
             filehash = simpleMovieName(file_name[0])
             if filehash in filehashes:
-                matchCount += 1
                 #logger.info("collision! " + file_name[0] + "  == " + filehash)
                 #best to move the file that has (1) at end
                 fileToMove = file_name[1]
                 if re.search(reOneInParens, filehashes[filehash]) is not None:
                     logger.debug("has 111111 " + filehashes[filehash])
                     fileToMove=filehashes[filehash]
-                duplicates.append({"filepath":fileToMove, "hash": filehash, "original":file_name[0]})
                 logger.info("DUPE: " + file_name[1] + " ------ " + filehashes[filehash])
+                asktoMove = input("Move File?")
+                if(asktoMove.lower() == 'q'):
+                    break
+                if(asktoMove.lower() == 'y'):
+                    logger.info("do the move!")
+                    duplicates.append({"filepath":fileToMove, "hash": filehash, "original":file_name[0]})
+                    matchCount += 1
             else:
                 filehashes[filehash] = file_name[1]
                 #logger.debug ('new file found hash: ' + filehash + " for filename: " + file_name[1])
@@ -117,7 +122,7 @@ logger.info("load a list of files")
 for md in baseMusicDirs:
     all_files_from_path_gen(md)
 findDupes()
-#moveDupes()
+moveDupes()
 logger.info("size of hashes file:" + str(len(filehashes)))
 
 '''

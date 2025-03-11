@@ -1,6 +1,8 @@
 '''
 Feb 2021 - deletes all songs from plex attached via JSON that are rated 1 star
 
+TODO: add routine to clear them off Monster as well (perhaps look at what deleteMusicFromList.py is doing, and write to a log file)
+
 '''
 import re
 import glob

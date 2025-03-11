@@ -1,4 +1,5 @@
 '''
+deleteMusicFromList.py
 utility to load a file of song names(songsToRemoveFile), and then move them out of music library(baseMusicDirs) to a "targetMoveFolder" folder
 '''
 import glob
@@ -11,7 +12,7 @@ import re
 #constants
 baseMusicDirs = ["D:/My Music/Pop"]
 logfilePath = "d:/temp/"
-songsToRemoveFile = "y:/plex_delete.log"
+songsToRemoveFile = "y:/plexwork/plex_delete.log"
 targetMoveFolder = "D:/temp/badmusic/"
 
 #Globals
