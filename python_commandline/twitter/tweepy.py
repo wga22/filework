@@ -3,10 +3,10 @@ import tweepy
 
 
 # Authentication details. To  obtain these visit dev.twitter.com
-consumer_key = 'nWGEdfoaBt7d6wWhiAw5Tw'
-consumer_secret = 'qM4QfDPqG9JQp6n0fqTCMrj6LJjES6vu2IzqpZLc'
-access_token = '2284416938-JbD4F32m9xQPMxKoh6UikpCLoJm8F6xy8wDPS9P'
-access_token_secret = 'XvJZQWa6zz5vHcHkUcYBacQKZJE9pcxbpxUUgNo9rN4AG'
+consumer_key = 'tt'
+consumer_secret = 'tt'
+access_token = 'tt-tt'
+access_token_secret = 'tt'
 
 if __name__ == '__main__':
     # Create authentication token

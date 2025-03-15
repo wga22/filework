@@ -9,7 +9,7 @@ import re
 #constants
 #moviedirs = ["D:/video/family", "D:/video/movieseries", "D:/video/documentaries", "D:/video/unwatched", "D:/video/archivemovies"]
 #baseMusicDirs = ["D:/My Music/Pop", "D:/temp/google_music_export/Tracks"]
-baseMusicDirs = ["D:/My Music/Pop"]
+baseMusicDirs = ["D:/My Music/Pop", "C:/work/music/music to review/yacht"]
 #baseMusicDirs = ["d:/temp/fixmusic2"]
 logfilePath = "c:/work/music/badmusic/"
 allMovieFiles = []
@@ -60,7 +60,7 @@ def simpleMovieName(fileName):
     #test cleansedName = re.sub(reParens, '', cleansedName)
     cleansedName = re.sub(reArtist, '', cleansedName)
     cleansedName = re.sub(reCharOnly, '', cleansedName)
-    cleansedName = re.sub(re.compile('\.'), '', cleansedName)
+    cleansedName = re.sub(re.compile('\\.'), '', cleansedName)
     cleansedName = re.sub(re.compile('^copyof'), '', cleansedName)
     cleansedName = re.sub(reOneInParens, '', cleansedName)
     cleansedName = re.sub(reFEAT, '', cleansedName)
@@ -77,15 +77,19 @@ def findDupes():
         #if re.search(reFileExtention, file_name[0]) is not None:
         if re.search(reFileExtention, file_name[0]) is not None:
             filehash = simpleMovieName(file_name[0])
-            if filehash in filehashes:
+            #ORIG if filehash in filehashes:
+            #look for inclusion AND on the C drive
+            if (filehash in filehashes) and (file_name[1].lower().startswith("c:/work/")):
                 #logger.info("collision! " + file_name[0] + "  == " + filehash)
                 #best to move the file that has (1) at end
                 fileToMove = file_name[1]
+                
+                #TODO: what is this?
                 if re.search(reOneInParens, filehashes[filehash]) is not None:
                     logger.debug("has 111111 " + filehashes[filehash])
                     fileToMove=filehashes[filehash]
                 logger.info("DUPE: " + file_name[1] + " ------ " + filehashes[filehash])
-                asktoMove = input("Move File?")
+                asktoMove = input(f"Move File? {fileToMove}")
                 if(asktoMove.lower() == 'q'):
                     break
                 if(asktoMove.lower() == 'y'):
