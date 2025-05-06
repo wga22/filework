@@ -7,10 +7,10 @@ import logging
 import re
 
 #constants
-LOGFILEPATH = "d:/temp/";
+LOGFILEPATH = "c:\\work\\music\\playlistwork\\";
 #playlistpath = "Y:/playlist/NAS_WillThumbsUp.m3u";
 #This is the playlist to create a batch file from
-playlistpath = "D:\\work\\playlistwork\\playlist\\merged.m3u"
+playlistpath = "c:\\work\\music\\playlistwork\\playlist\\thumbdrive.m3u"
 
 LINUXSOURCEPREFIX = "/var/lib/mpd/music/NAS/Spiderman-POP";
 LINUXTARGETFOLDER = "/var/lib/mpd/music/SDCARD";

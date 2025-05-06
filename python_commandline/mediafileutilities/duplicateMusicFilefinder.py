@@ -9,7 +9,7 @@ import re
 #constants
 #moviedirs = ["D:/video/family", "D:/video/movieseries", "D:/video/documentaries", "D:/video/unwatched", "D:/video/archivemovies"]
 #baseMusicDirs = ["D:/My Music/Pop", "D:/temp/google_music_export/Tracks"]
-baseMusicDirs = ["D:/My Music/Pop", "C:/work/music/music to review/yacht"]
+baseMusicDirs = ["D:/My Music/Pop"]
 #baseMusicDirs = ["d:/temp/fixmusic2"]
 logfilePath = "c:/work/music/badmusic/"
 allMovieFiles = []
@@ -35,7 +35,7 @@ def prepLogger(appName):
     hdlr.setFormatter(formatter)
     _logger.addHandler(hdlr) 
     _logger.addHandler(logging.StreamHandler())
-    _logger.setLevel(logging.INFO)
+    _logger.setLevel(logging.DEBUG)
     return _logger
 
 #yield os.path.join(root, d, f)
@@ -128,46 +128,3 @@ for md in baseMusicDirs:
 findDupes()
 moveDupes()
 logger.info("size of hashes file:" + str(len(filehashes)))
-
-'''
-
-'''
-        
-'''
-prices = {'apple': 0.40, 'banana': 0.50}
-my_purchase = {
-    'apple': 1,
-    'banana': 6}
-grocery_bill = sum(prices[fruit] * my_purchase[fruit]
-       for fruit in my_purchase)
-
-
-filehashes = ['asdfs']
-for f in filehashes
-    #print(fh, "=", filehashes[fh])
-    print("lop")
-
-import glob
-# glob supports Unix style pathname extensions
-python_files = glob.glob('*.py')
-for file_name in sorted(python_files):
-    print '    ------' + file_name
-
-    with open(file_name) as f:
-        for line in f:
-            print '    ' + line.rstrip()
-
-    print
-
-def md5Checksum(filePath):
-    with open(filePath, 'rb') as fh:
-        m = hashlib.md5()
-        while True:
-            data = fh.read(8192)
-            if not data:
-                break
-            m.update(data)
-        return m.hexdigest()        
-    
-    
-    '''

@@ -1,63 +1,54 @@
 '''
-Feb 2021 - deletes all songs from plex attached via JSON that are rated 1 star
-
-TODO: add routine to clear them off Monster as well (perhaps look at what deleteMusicFromList.py is doing, and write to a log file)
-
+2025-04 - modified to account for "song.delete" was not working to just delete the file directly from the OS
 '''
-import re
-import glob
-import hashlib
-import os
-import shutil
-import logging
-import email
-import mimetypes
-#from plexapi.myplex import MyPlexAccount   https://python-plexapi.readthedocs.io/en/latest/index.html
-from plexapi.server import PlexServer
-import json
 
+import json
+import os
+import platform
+from plexapi.server import PlexServer
+import plexapi.exceptions
+
+# Check if running on Windows
+if platform.system() == "Windows":
+    print("Error: This script cannot be run on Windows. Please run it on the Linux Plex server.")
+    exit(1)
+
+# Load Plex credentials
 with open('plex_credentials.json') as json_file:
     plex_cred = json.load(json_file)
-    #account = MyPlexAccount(plex_cred.user, plex_cred.password)
-    #plex = account.resource(plex_cred.server).connect()  # returns a PlexServer instance
-    #print(plex_cred)
-    #print(plex_cred['baseurl'])
+
+# Connect to Plex server
+try:
     plex = PlexServer(plex_cred['baseurl'], plex_cred['token'])
-    for playlist in plex.playlists():
-        if("BAD_MUSIC" == playlist.title):
-            print ("removing all songs from: ", playlist.title)
-            for song in playlist.items():
-                print(song.artist().title , " - " ,  song.title )
-                song.delete()
+except Exception as e:
+    print(f"Failed to connect to Plex server: {e}")
+    exit(1)
 
-    
-
-'''
-    for song in plex.search('various', 'artist'):
-        if(song.TYPE=='track'):
-            artist = song.artist()
-            artistName = 'null' if  artist is None else artist.title
-            album = song.album()
-            if album is None:
-                albumName = 'null' 
-                albumArtistName = 'null'
-            else:
-                albumName = album.title
-                albumArtistName = 'null' if album.artist() is None else album.artist().title
-            print('%s --- %s -----%s ----- %s' % (artistName, albumArtistName, albumName, song.title))
-            #print('%s (%s)' % (, song.TYPE))
-        elif (song.TYPE=='artist'):
-            print('artist: %s', song.title )
-            for album in song:
-                print("album title: %s", album.title )
-
-
-filename = re.sub(validfilenameRE, '_', filename)
-logger = logging.getLogger('myapp')
-hdlr = logging.FileHandler('d:/temp/python_log.txt')
-formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
-hdlr.setFormatter(formatter)
-logger.addHandler(hdlr) 
-logger.setLevel(logging.INFO)
-logger.info('While this is just chatty')
-'''
+# Find and process BAD_MUSIC playlist
+for playlist in plex.playlists():
+    if playlist.title == "BAD_MUSIC":
+        print(f"Removing all songs from: {playlist.title}")
+        for song in playlist.items():
+            if song.TYPE != 'track':
+                print(f"Skipping {song.title}: Not a track (Type: {song.TYPE})")
+                continue
+            file_path = song.media[0].parts[0].file if song.media and song.media[0].parts else "Unknown"
+            print(f"{song.artist().title} - {song.title} - Key: {song.key} - File: {file_path}")
+            try:
+                song.reload()  # Ensure metadata is valid
+                if file_path and os.path.exists(file_path):
+                    os.remove(file_path)  # Delete file directly
+                    print(f"Manually deleted file: {file_path}")
+                song.delete()  # Remove metadata
+                print(f"Deleted metadata for {song.title}")
+            except plexapi.exceptions.BadRequest as e:
+                print(f"Failed to delete metadata for {song.title}: {e}")
+                print("Running library scan to remove orphaned metadata")
+                plex.library.section('Music').update()  # Scan to remove orphaned metadata
+            except OSError as e:
+                print(f"Failed to delete file {file_path}: {e}")
+            except Exception as e:
+                print(f"Unexpected error for {song.title}: {e}")
+        break
+else:
+    print("Playlist 'BAD_MUSIC' not found.")

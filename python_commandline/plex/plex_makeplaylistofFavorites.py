@@ -1,7 +1,7 @@
 '''
 Nov 2021 - write out all playlists to both winamp and volumio
 May 2021 - Makes a playlist from 4 star files
-
+May 2025 - minor updates
 [
 {"service":"mpd","uri":"mnt/NAS/Spiderman/Billie Eilish/Billie Eilish - everything i wanted.mp3","title":"ee","artist":"be","album":"badss"},
 {"service":"mpd","uri":"mnt/NAS/Spiderman/Blind Melon/Blind Melon - No Rain.mp3","title":"No Rain","artist":"Blind Melon","album":"Blind Melon","albumart":"/albumart?cacheid=236&web=Blind%20Melon/Blind$
@@ -22,18 +22,24 @@ import mimetypes
 from plexapi.server import PlexServer
 import json
 
-volumioPlaylistDirName="C:/work/music/playlistwork/playlist/"
-winampPlaylistFolder="D:/My Music/playlists/"
-moodePlaylistDirName="C:/work/music/playlistwork/playlist/"
-winampSongDirName="D:/\"My Music\"/Pop"
-SongDirName="D:/My Music/Pop"
-#volumioPlaylistFile= volumioPlaylistDirName + "favoritesfromplex.m3u"
+JSON_PATH='./plex/plex_credentials.json'
 
 rePlexPathPrefix = re.compile('/media/ten/music/Pop') 
 reQuotes = re.compile('"')
 reWhitespace = re.compile('\\s')
+
+#folders to write playlists into
+volumioPlaylistDirName="C:/work/music/playlistwork/playlist/"
+winampPlaylistFolder="D:/My Music/playlists/"
+moodePlaylistDirName="C:/work/music/playlistwork/playlist/"
+SongDirName="D:/My Music/Pop"
+#volumioPlaylistFile= volumioPlaylistDirName + "favoritesfromplex.m3u"
+
+#path for each to get music from 
 volBasePath = "mnt/NAS/spiderman"
 moodeBasePath = "NAS/Spiderman-POP"
+winampSongDirBasePath="D:/\"My Music\"/Pop"
+
 # BEFORE: /media/ten/music/Pop/The Who/The Who 
 # AFTER: mnt/NAS/Spiderman/Billie Eilish/Billie Eilish - everything i wanted.mp3
 
@@ -48,12 +54,8 @@ def checkPaths():
     return os.path.exists(volumioPlaylistDirName) and os.path.exists(winampPlaylistFolder) and os.path.exists(moodePlaylistDirName)
 
 def main():
-    with open('plex_credentials.json') as json_file:
+    with open(JSON_PATH) as json_file:
         plex_cred = json.load(json_file)
-        #account = MyPlexAccount(plex_cred.user, plex_cred.password)
-        #plex = account.resource(plex_cred.server).connect()  # returns a PlexServer instance
-        #print(plex_cred)
-        #print(plex_cred['baseurl'])
         plex = PlexServer(plex_cred['baseurl'], plex_cred['token'])
         for playlist in plex.playlists():
             playlistLen = 0        
@@ -82,7 +84,7 @@ def main():
                         # working url, title, key
                         #print("parts: " , song.media[0].parts[0])
                         fileName = song.media[0].parts[0].file
-                        winampFileName =  re.sub(rePlexPathPrefix, winampSongDirName, fileName)
+                        winampFileName =  re.sub(rePlexPathPrefix, winampSongDirBasePath, fileName)
                         moodeFileName = re.sub(rePlexPathPrefix, moodeBasePath, fileName)
                         fileName = re.sub(rePlexPathPrefix, volBasePath, fileName)
                         print(song.media[0].parts[0].file , " - " ,  fileName )
