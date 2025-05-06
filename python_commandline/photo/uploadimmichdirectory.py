@@ -8,8 +8,7 @@ from datetime import datetime
 #GLOBALS
 #BASE_URL = 'http://127.0.0.1:2283/api'  # replace as needed
 ncounter=0
-
-
+nDupes=0
 DANICA_JSON_CONFIG="./danica_immich_config.json"
 WILL_JSON_CONFIG="./will_immich_config.json"
 DANIELLE_JSON_CONFIG="./danielle_immich_config.json"
@@ -32,6 +31,7 @@ import requests
 
 def upload(file, api_key, base_url):
     global ncounter  # Declare ncounter as global to modify the global variable
+    global nDupes  # Declare ncounter as global to modify the global variable
     stats = os.stat(file)
 
     headers = {
@@ -54,17 +54,18 @@ def upload(file, api_key, base_url):
     try:
         response = requests.post(
             f'{base_url}/assets', headers=headers, data=data, files=files)
-        ncounter += 1
-        print(f"{ncounter} :Uploaded {file}: code{response.status_code} {response.json()}")
+        #print(f"{ncounter} / {nDupes} :Uploaded {file}: code{response.status_code} {response.json()}")
         
         # Delete the file if upload is successful (201) or duplicate (200 with 'status': 'duplicate')
-        if response.status_code == 201 or (
-            response.status_code == 200 and 
-            response.json().get('status') == 'duplicate'
-        ):
+
+        if response.status_code == 201:
             os.remove(file)
-            print(f"Deleted {file} after successful upload or duplicate")
-            
+            ncounter += 1
+            print(f"{ncounter}/{nDupes} : Successful new file uploaded and deleted: {file}")
+        if (response.status_code == 200 and response.json().get('status') == 'duplicate'):
+            os.remove(file)
+            nDupes += 1
+            print(f"{ncounter}/{nDupes}: Duplicate deleted: {file} ")
     except Exception as e:
         print(f"Error uploading {file}: {str(e)}")
     finally:
@@ -78,6 +79,8 @@ def process_directory(directory, api_key,base_url):
 
 
 def import_and_run_images(json_file):
+    ncounter = 0
+    nDupes = 0
     api_key, target_directory, base_url = load_config(json_file)
     
     if api_key and target_directory and base_url:
