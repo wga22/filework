@@ -12,7 +12,7 @@ from amazon_photos import AmazonPhotos
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
 # Configuration file path
-config_path = 'amazon_config.json'
+config_path = './photo/amazon_config.json'
 
 # Configure logging
 logging.basicConfig(
@@ -123,7 +123,7 @@ def main():
     if not os.path.isdir(config['source_folder']):
         logger.error(f"Source folder {config['source_folder']} does not exist")
         return
-    
+    return
     # Get image files
     image_files = get_image_files(config['source_folder'])
     
