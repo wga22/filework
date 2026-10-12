@@ -46,3 +46,5 @@ python_commandline/badsongs.txt
 python_commandline/school_form.py
 *.json
 python_commandline/log.log
+python_commandline/plex/__pycache__/plex_fixmissingratings.cpython-312.pyc
+python_commandline/plex/__pycache__/plex_randomthumbdrive.cpython-312.pyc
