@@ -1,12 +1,20 @@
 import json
 import time
 from pathlib import Path
+from urllib.parse import urlencode
+from urllib.request import Request, urlopen
+import psycopg
 import tinytuya
 
 # Device configuration
 CREDENTIALS_FILE = Path(__file__).with_name("inverter_credentials.json")
 with CREDENTIALS_FILE.open(encoding="utf-8") as credentials_file:
-    TUYA_CONFIG = json.load(credentials_file)["tuya_extract"]
+    CREDENTIALS = json.load(credentials_file)
+
+TUYA_CONFIG = CREDENTIALS["tuya_extract"]
+POSTGRES_CONFIG = CREDENTIALS["postgres"]
+THINGSPEAK_CONFIG = CREDENTIALS["thingspeak"]
+THINGSPEAK_CHANNEL_ID = 3544921
 
 DEVICE_ID = TUYA_CONFIG["device_id"]
 DEVICE_IP = TUYA_CONFIG["device_ip"]
@@ -52,7 +60,7 @@ def attempt_hardware_reset():
         print_telemetry(parse_telemetry(updated_status["dps"]))
 
 
-def parse_telemetry(dps: dict) -> dict[str, int | float]:
+def parse_telemetry(dps: dict) -> dict[str, int | float | bool]:
     """Parses raw Tuya DPS integers into scaled engineering units."""
     # Voltage: DPS 20 is 0.1V per unit
     ac_volts = dps.get("20", 0) / 10.0
@@ -85,10 +93,11 @@ def parse_telemetry(dps: dict) -> dict[str, int | float]:
         "temp_c": temp_c,
         "freq_hz": freq_hz,
         "dc_bus_v": dc_bus_v,
+        "is_active": freq_hz != 0 and dc_bus_v >= 18.0,
     }
 
 
-def print_telemetry(telemetry: dict[str, int | float]) -> None:
+def print_telemetry(telemetry: dict[str, int | float | bool]) -> None:
     print("\n================ Inverter Live Telemetry ================")
     print(f"AC Output Voltage : {telemetry['ac_volts']:.1f} V AC | Grid Freq: {telemetry['freq_hz']} Hz")
     print(f"AC Current Draw   : {telemetry['ac_amps']:.3f} A")
@@ -102,6 +111,73 @@ def print_telemetry(telemetry: dict[str, int | float]) -> None:
 
 
 
+def write_telemetry_toDB(telemetry: dict[str, int | float | bool]) -> int:
+    """Insert one telemetry row and return its generated ID."""
+    is_active = telemetry["is_active"]
+    with psycopg.connect(
+        host=POSTGRES_CONFIG["host"],
+        port=POSTGRES_CONFIG["port"],
+        dbname=POSTGRES_CONFIG["database"],
+        user=POSTGRES_CONFIG["username"],
+        password=POSTGRES_CONFIG["password"],
+    ) as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                INSERT INTO inverter_telemetry (
+                    device_id, is_active, heatsink_temp_c, grid_freq_hz,
+                    ac_voltage_v, ac_current_a, power_reported_w,
+                    dc_bus_voltage_v, raw_cumulative_wh
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                RETURNING id
+                """,
+                (
+                    DEVICE_ID,
+                    is_active,
+                    round(telemetry["temp_c"]) if is_active else None,
+                    telemetry["freq_hz"],
+                    telemetry["ac_volts"],
+                    telemetry["ac_amps"] if is_active else 0.0,
+                    telemetry["raw_power"] if is_active else 0.0,
+                    telemetry["dc_bus_v"],
+                    telemetry["raw_cumulative_wh"],
+                ),
+            )
+            record_id = cursor.fetchone()[0]
+    return record_id
+
+
+def write_telemetry_to_thingspeak(telemetry: dict[str, int | float | bool]) -> int:
+    """Send one telemetry update and return its ThingSpeak entry ID."""
+    fields = {
+        "api_key": THINGSPEAK_CONFIG["write_api_key"],
+        "field1": int(telemetry["is_active"]),
+        "field2": telemetry["ac_volts"],
+        "field3": telemetry["ac_amps"] if telemetry["is_active"] else 0.0,
+        "field4": telemetry["raw_power"] if telemetry["is_active"] else 0.0,
+        "field5": telemetry["calc_watts"] if telemetry["is_active"] else 0.0,
+        "field6": telemetry["dc_bus_v"],
+        "field8": telemetry["net_produced_kwh"],
+    }
+    if telemetry["is_active"]:
+        fields["field7"] = telemetry["temp_c"]
+
+    request = Request(
+        "https://api.thingspeak.com/update.json",
+        data=urlencode(fields).encode("ascii"),
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
+        method="POST",
+    )
+    with urlopen(request, timeout=10) as response:
+        result = json.load(response)
+
+    if result.get("channel_id") != THINGSPEAK_CHANNEL_ID or not result.get("entry_id"):
+        raise RuntimeError(
+            f"ThingSpeak update failed or used the wrong channel: {result}"
+        )
+    return result["entry_id"]
+
+
 def main():
     print("Fetching initial reading...")
     initial_status = device.status()
@@ -111,19 +187,14 @@ def main():
         print(f"Error reading status: {initial_status}")
         return
     
-    is_sleeping = (telemetry["freq_hz"] == 0) or (telemetry["dc_bus_v"] < 18.0)
-
-    if is_sleeping:
-        active_watts_real = 0.0
-        active_watts_reported = 0.0
-        display_temp = None  # Store as NULL/None in Postgres and ThingSpeak
+    if not telemetry["is_active"]:
         print("Inverter is in sleep mode (no AC output). Telemetry values will be zeroed.")
     else:
-        active_watts_real = telemetry["calc_watts"]
-        active_watts_reported = telemetry["raw_power"]
-        display_temp = telemetry["temp_c"]
         print_telemetry(telemetry)
-
+        record_id = write_telemetry_toDB(telemetry)
+        print(f"Saved telemetry row {record_id} to PostgreSQL.")
+        entry_id = write_telemetry_to_thingspeak(telemetry)
+        print(f"Saved telemetry entry {entry_id} to ThingSpeak channel {THINGSPEAK_CHANNEL_ID}.")
 
     # Try alternate write payloads
     #attempt_hardware_reset()
