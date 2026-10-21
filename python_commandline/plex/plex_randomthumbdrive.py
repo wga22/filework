@@ -12,7 +12,7 @@ MUSIC_LIBRARY_NAME = "Music"
 THUMBDRIVE_PATH = Path("e:/")
 MUSIC_DIR = Path(r"D:\My Music\Pop")
 PLEX_MUSIC_ROOT = PurePosixPath("/media/ten/music/Pop")
-MAX_SONGS = 100
+MAX_SONGS = 350
 MIN_RATING = 6.0
 
 
