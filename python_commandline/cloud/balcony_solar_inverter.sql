@@ -7,18 +7,15 @@ CREATE TABLE IF NOT EXISTS inverter_telemetry (
     -- Inverter state & health
     is_active            BOOLEAN NOT NULL,
     fault_code           INTEGER NOT NULL DEFAULT 0,
-    heatsink_temp_c      INTEGER,
-    grid_freq_hz         INTEGER,
     
     -- AC Grid side (Scaled)
     ac_voltage_v         NUMERIC(5, 1) NOT NULL,   -- DPS 20 / 10.0
     ac_current_a         NUMERIC(6, 3) NOT NULL,   -- DPS 22 / 1000.0
     power_reported_w     NUMERIC(6, 1) NOT NULL,   -- DPS 25 / 100.0
+    apparent_power_va    NUMERIC(7, 1) NOT NULL,
+    power_factor         NUMERIC(4, 2) NOT NULL,
     power_calculated_w   NUMERIC(6, 1) GENERATED ALWAYS AS (ROUND(ac_voltage_v * ac_current_a, 1)) STORED,
-    
-    -- DC Input side (Scaled)
-    dc_bus_voltage_v     NUMERIC(5, 1),            -- DPS 24 / 1000.0 or 10.0
-    
+       
     -- Accumulation & Cumulative Energy
     raw_cumulative_wh    BIGINT NOT NULL,          -- DPS 23 raw integer
     net_produced_wh      BIGINT GENERATED ALWAYS AS (GREATEST(0, raw_cumulative_wh - 28083)) STORED,
@@ -27,6 +24,13 @@ CREATE TABLE IF NOT EXISTS inverter_telemetry (
     -- Raw payload backup for debugging/unmapped attributes
     raw_dps              JSONB
 );
+
+ALTER TABLE inverter_telemetry
+    ADD COLUMN IF NOT EXISTS apparent_power_va NUMERIC(7, 1),
+    ADD COLUMN IF NOT EXISTS power_factor NUMERIC(4, 2),
+    DROP COLUMN IF EXISTS heatsink_temp_c,
+    DROP COLUMN IF EXISTS grid_freq_hz,
+    DROP COLUMN IF EXISTS dc_bus_voltage_v;
 
 -- Index for time-series range queries and dashboard charting
 CREATE INDEX IF NOT EXISTS idx_inverter_telemetry_time 

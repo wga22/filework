@@ -60,60 +60,70 @@ def attempt_hardware_reset():
         print_telemetry(parse_telemetry(updated_status["dps"]))
 
 
-def parse_telemetry(dps: dict) -> dict[str, int | float | bool]:
+def parse_telemetry(dps: dict) -> dict[str, int | float | bool | None]:
     """Parses raw Tuya DPS integers into scaled engineering units."""
-    # Voltage: DPS 20 is 0.1V per unit
-    ac_volts = dps.get("20", 0) / 10.0
-    
-    # Current: DPS 22 is 0.001A (mA) per unit
-    ac_amps = dps.get("22", 0) / 1000.0
-    
-    # Inverter reported power vs real calculated apparent power
-    raw_power = dps.get("25", 0) / 100.0  # 2770 -> 27.7 W
-    calc_watts = ac_volts * ac_amps
-    
-    # Lifetime energy: DPS 23 is in Wh
-    raw_cumulative_wh = dps.get("23", 0)
+    # DPS 1: Main inverter state switch
+    is_switch_on = bool(dps.get("1", False))
+
+    # DPS 20: AC Grid Voltage (0.1V per unit -> e.g., 1227 = 122.7 V)
+    ac_volts = round(dps.get("20", 0) / 10.0, 1)
+
+    # DPS 18: AC Output Current (1 mA per unit -> e.g., 582 = 0.582 A)
+    ac_amps = round(dps.get("18", 0) / 1000.0, 3)
+
+    # DPS 19: Active Grid-Injected Power (0.1W per unit -> e.g., 637 = 63.7 W)
+    power_w = round(dps.get("19", 0) / 10.0, 1)
+
+    # Apparent Power (VA = V * A)
+    apparent_power_va = round(ac_volts * ac_amps, 1)
+
+    # Power Factor calculation (Active Power / Apparent Power)
+    power_factor = (
+        round(min(1.0, power_w / apparent_power_va), 2)
+        if apparent_power_va > 0
+        else 0.0
+    )
+
+    # DPS 23: Lifetime Cumulative Energy (Wh)
+    raw_cumulative_wh = int(dps.get("23", 0))
     net_produced_wh = max(0, raw_cumulative_wh - STARTING_OFFSET_WH)
-    net_produced_kwh = net_produced_wh / 1000.0
-    
-    temp_c = dps.get("18", 0) / 10.0
-    freq_hz = dps.get("19", 0)
-    dc_bus_v = dps.get("24", 0) / 1000.0 if dps.get("24", 0) > 1000 else dps.get("24", 0) / 10.0
+    net_produced_kwh = round(net_produced_wh / 1000.0, 3)
+
+    # Operational status: active if switch is enabled and reporting current/power
+    is_active = is_switch_on and (power_w > 0.0 or ac_amps > 0.05)
 
     return {
+        "is_active": is_active,
         "ac_volts": ac_volts,
         "ac_amps": ac_amps,
-        "raw_power": raw_power,
-        "calc_watts": calc_watts,
-        "raw_cumulative_wh": raw_cumulative_wh,
-        "raw_cumulative_kwh": raw_cumulative_wh / 1000.0,
-        "net_produced_wh": net_produced_wh,
+        "power_w": power_w,
+        "apparent_power_va": apparent_power_va,
+        "power_factor": power_factor,
+        "raw_cumulative_kwh": round(raw_cumulative_wh / 1000.0, 3),
         "net_produced_kwh": net_produced_kwh,
-        "temp_c": temp_c,
-        "freq_hz": freq_hz,
-        "dc_bus_v": dc_bus_v,
-        "is_active": freq_hz != 0 and dc_bus_v >= 18.0,
+        "fault_code": int(dps.get("9", 0)),
+        "dps": dps,  # Include raw DPS for reference
     }
 
 
 def print_telemetry(telemetry: dict[str, int | float | bool]) -> None:
     print("\n================ Inverter Live Telemetry ================")
-    print(f"AC Output Voltage : {telemetry['ac_volts']:.1f} V AC | Grid Freq: {telemetry['freq_hz']} Hz")
+    print(f"Inverter Active   : {telemetry['is_active']}")
+    print(f"AC Output Voltage : {telemetry['ac_volts']:.1f} V AC")
     print(f"AC Current Draw   : {telemetry['ac_amps']:.3f} A")
-    print(f"Active Output     : {telemetry['calc_watts']:.1f} W (Calculated) | {telemetry['raw_power']:.1f} W (Reported)")
-    print(f"DC Bus / PV Input : {telemetry['dc_bus_v']:.1f} V DC")
-    print(f"Heatsink Temp     : {telemetry['temp_c']} °C")
+    print(f"Active Power      : {telemetry['power_w']:.1f} W")
+    print(f"Apparent Power    : {telemetry['apparent_power_va']:.1f} VA")
+    print(f"Power Factor      : {telemetry['power_factor']:.2f}")
     print("---------------------------------------------------------")
-    print(f"Raw Device Total  : {telemetry['raw_cumulative_wh']} Wh ({telemetry['raw_cumulative_kwh']:.3f} kWh)")
-    print(f"Net Actual Output : {telemetry['net_produced_wh']} Wh ({telemetry['net_produced_kwh']:.3f} kWh)")
+    print(f"Raw Device Total  : {telemetry['raw_cumulative_kwh']:.3f} kWh")
+    print(f"Net Actual Output : {telemetry['net_produced_kwh']:.3f} kWh")
+    print(f"Fault Code        : {telemetry['fault_code']}")
     print("=========================================================\n")
 
 
 
 def write_telemetry_toDB(telemetry: dict[str, int | float | bool]) -> int:
     """Insert one telemetry row and return its generated ID."""
-    is_active = telemetry["is_active"]
     with psycopg.connect(
         host=POSTGRES_CONFIG["host"],
         port=POSTGRES_CONFIG["port"],
@@ -124,23 +134,24 @@ def write_telemetry_toDB(telemetry: dict[str, int | float | bool]) -> int:
         with connection.cursor() as cursor:
             cursor.execute(
                 """
-                INSERT INTO inverter_telemetry (
-                    device_id, is_active, heatsink_temp_c, grid_freq_hz,
-                    ac_voltage_v, ac_current_a, power_reported_w,
-                    dc_bus_voltage_v, raw_cumulative_wh
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                INSERT INTO tesla.inverter_telemetry (
+                    device_id, is_active, fault_code, ac_voltage_v,
+                    ac_current_a, power_reported_w, apparent_power_va,
+                    power_factor, raw_cumulative_wh, raw_dps
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 RETURNING id
                 """,
                 (
                     DEVICE_ID,
-                    is_active,
-                    round(telemetry["temp_c"]) if is_active else None,
-                    telemetry["freq_hz"],
+                    telemetry["is_active"],
+                    telemetry["fault_code"],
                     telemetry["ac_volts"],
-                    telemetry["ac_amps"] if is_active else 0.0,
-                    telemetry["raw_power"] if is_active else 0.0,
-                    telemetry["dc_bus_v"],
-                    telemetry["raw_cumulative_wh"],
+                    telemetry["ac_amps"],
+                    telemetry["power_w"],
+                    telemetry["apparent_power_va"],
+                    telemetry["power_factor"],
+                    round(telemetry["raw_cumulative_kwh"] * 1000),
+                    json.dumps(telemetry["dps"]),
                 ),
             )
             record_id = cursor.fetchone()[0]
@@ -153,14 +164,13 @@ def write_telemetry_to_thingspeak(telemetry: dict[str, int | float | bool]) -> i
         "api_key": THINGSPEAK_CONFIG["write_api_key"],
         "field1": int(telemetry["is_active"]),
         "field2": telemetry["ac_volts"],
-        "field3": telemetry["ac_amps"] if telemetry["is_active"] else 0.0,
-        "field4": telemetry["raw_power"] if telemetry["is_active"] else 0.0,
-        "field5": telemetry["calc_watts"] if telemetry["is_active"] else 0.0,
-        "field6": telemetry["dc_bus_v"],
-        "field8": telemetry["net_produced_kwh"],
+        "field3": telemetry["ac_amps"],
+        "field4": telemetry["power_w"],
+        "field5": telemetry["power_factor"],
+        "field6": telemetry["raw_cumulative_kwh"],
+        "field7": telemetry["net_produced_kwh"],
+        "field8": telemetry["fault_code"],
     }
-    if telemetry["is_active"]:
-        fields["field7"] = telemetry["temp_c"]
 
     request = Request(
         "https://api.thingspeak.com/update.json",
