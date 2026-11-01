@@ -48,3 +48,4 @@ python_commandline/school_form.py
 python_commandline/log.log
 python_commandline/plex/__pycache__/plex_fixmissingratings.cpython-312.pyc
 python_commandline/plex/__pycache__/plex_randomthumbdrive.cpython-312.pyc
+python_commandline/cloud/__pycache__/solar_tua_extract.cpython-312.pyc
