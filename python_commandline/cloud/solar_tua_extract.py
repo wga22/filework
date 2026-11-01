@@ -21,9 +21,6 @@ DEVICE_IP = TUYA_CONFIG["device_ip"]
 LOCAL_KEY = TUYA_CONFIG["local_key"]
 PROTOCOL_VERSION = 3.4
 
-# Factory baseline offset (raw Wh stored in EEPROM from burn-in)
-STARTING_OFFSET_WH = 28083
-
 device = tinytuya.OutletDevice(
     dev_id=DEVICE_ID, 
     address=DEVICE_IP, 
@@ -84,11 +81,6 @@ def parse_telemetry(dps: dict) -> dict[str, int | float | bool | None]:
         else 0.0
     )
 
-    # DPS 23: Lifetime Cumulative Energy (Wh)
-    raw_cumulative_wh = int(dps.get("23", 0))
-    net_produced_wh = max(0, raw_cumulative_wh - STARTING_OFFSET_WH)
-    net_produced_kwh = round(net_produced_wh / 1000.0, 3)
-
     # Operational status: active if switch is enabled and reporting current/power
     is_active = is_switch_on and (power_w > 0.0 or ac_amps > 0.05)
 
@@ -99,8 +91,6 @@ def parse_telemetry(dps: dict) -> dict[str, int | float | bool | None]:
         "power_w": power_w,
         "apparent_power_va": apparent_power_va,
         "power_factor": power_factor,
-        "raw_cumulative_kwh": round(raw_cumulative_wh / 1000.0, 3),
-        "net_produced_kwh": net_produced_kwh,
         "fault_code": int(dps.get("9", 0)),
         "dps": dps,  # Include raw DPS for reference
     }
@@ -115,8 +105,9 @@ def print_telemetry(telemetry: dict[str, int | float | bool]) -> None:
     print(f"Apparent Power    : {telemetry['apparent_power_va']:.1f} VA")
     print(f"Power Factor      : {telemetry['power_factor']:.2f}")
     print("---------------------------------------------------------")
-    print(f"Raw Device Total  : {telemetry['raw_cumulative_kwh']:.3f} kWh")
-    print(f"Net Actual Output : {telemetry['net_produced_kwh']:.3f} kWh")
+    if "raw_cumulative_wh" in telemetry and "net_produced_wh" in telemetry:
+        print(f"Interval Energy   : {telemetry['raw_cumulative_wh'] / 1000.0:.3f} kWh")
+        print(f"Net Actual Output : {telemetry['net_produced_wh'] / 1000.0:.3f} kWh")
     print(f"Fault Code        : {telemetry['fault_code']}")
     print("=========================================================\n")
 
@@ -132,16 +123,58 @@ def write_telemetry_toDB(telemetry: dict[str, int | float | bool]) -> int:
         password=POSTGRES_CONFIG["password"],
     ) as connection:
         with connection.cursor() as cursor:
+            cursor.execute("SELECT CURRENT_TIMESTAMP")
+            recorded_at = cursor.fetchone()[0]
+            cursor.execute(
+                """
+                SELECT recorded_at, power_reported_w
+                FROM tesla.inverter_telemetry
+                WHERE device_id = %s
+                  AND recorded_at >= date_trunc('day', %s::timestamptz)
+                  AND recorded_at < date_trunc('day', %s::timestamptz) + INTERVAL '1 day'
+                ORDER BY recorded_at DESC, id DESC
+                LIMIT 1
+                """,
+                (DEVICE_ID, recorded_at, recorded_at),
+            )
+            previous_reading = cursor.fetchone()
+            if previous_reading is None:
+                previous_power_w = 0.0
+                elapsed_hours = 1.0
+            else:
+                previous_at, previous_power_w = previous_reading
+                previous_power_w = float(previous_power_w)
+                elapsed_hours = (recorded_at - previous_at).total_seconds() / 3600.0
+
+            interval_wh = max(
+                0,
+                round(
+                    ((previous_power_w + telemetry["power_w"]) / 2.0)
+                    * elapsed_hours
+                ),
+            )
+            cursor.execute(
+                """
+                SELECT COALESCE(SUM(raw_cumulative_wh), 0)
+                FROM tesla.inverter_telemetry
+                WHERE device_id = %s
+                """,
+                (DEVICE_ID,),
+            )
+            net_produced_wh = cursor.fetchone()[0] + interval_wh
+            telemetry["raw_cumulative_wh"] = interval_wh
+            telemetry["net_produced_wh"] = net_produced_wh
             cursor.execute(
                 """
                 INSERT INTO tesla.inverter_telemetry (
-                    device_id, is_active, fault_code, ac_voltage_v,
+                    recorded_at, device_id, is_active, fault_code, ac_voltage_v,
                     ac_current_a, power_reported_w, apparent_power_va,
-                    power_factor, raw_cumulative_wh, raw_dps
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    power_factor, raw_cumulative_wh, raw_dps, net_produced_wh
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 RETURNING id
                 """,
                 (
+                    recorded_at,
                     DEVICE_ID,
                     telemetry["is_active"],
                     telemetry["fault_code"],
@@ -150,8 +183,9 @@ def write_telemetry_toDB(telemetry: dict[str, int | float | bool]) -> int:
                     telemetry["power_w"],
                     telemetry["apparent_power_va"],
                     telemetry["power_factor"],
-                    round(telemetry["raw_cumulative_kwh"] * 1000),
+                    interval_wh,
                     json.dumps(telemetry["dps"]),
+                    net_produced_wh,
                 ),
             )
             record_id = cursor.fetchone()[0]
@@ -167,8 +201,8 @@ def write_telemetry_to_thingspeak(telemetry: dict[str, int | float | bool]) -> i
         "field3": telemetry["ac_amps"],
         "field4": telemetry["power_w"],
         "field5": telemetry["power_factor"],
-        "field6": telemetry["raw_cumulative_kwh"],
-        "field7": telemetry["net_produced_kwh"],
+        "field6": telemetry["raw_cumulative_wh"] / 1000.0,
+        "field7": telemetry["net_produced_wh"] / 1000.0,
         "field8": telemetry["fault_code"],
     }
 
@@ -200,8 +234,8 @@ def main():
     if not telemetry["is_active"]:
         print("Inverter is in sleep mode (no AC output). Telemetry values will be zeroed.")
     else:
-        print_telemetry(telemetry)
         record_id = write_telemetry_toDB(telemetry)
+        print_telemetry(telemetry)
         print(f"Saved telemetry row {record_id} to PostgreSQL.")
         entry_id = write_telemetry_to_thingspeak(telemetry)
         print(f"Saved telemetry entry {entry_id} to ThingSpeak channel {THINGSPEAK_CHANNEL_ID}.")
