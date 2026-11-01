@@ -161,7 +161,7 @@ def write_telemetry_toDB(telemetry: dict[str, int | float | bool]) -> int:
                 """,
                 (DEVICE_ID,),
             )
-            net_produced_wh = cursor.fetchone()[0] + interval_wh
+            net_produced_wh = int(cursor.fetchone()[0]) + interval_wh
             telemetry["raw_cumulative_wh"] = interval_wh
             telemetry["net_produced_wh"] = net_produced_wh
             cursor.execute(
@@ -201,8 +201,8 @@ def write_telemetry_to_thingspeak(telemetry: dict[str, int | float | bool]) -> i
         "field3": telemetry["ac_amps"],
         "field4": telemetry["power_w"],
         "field5": telemetry["power_factor"],
-        "field6": telemetry["raw_cumulative_wh"] / 1000.0,
-        "field7": telemetry["net_produced_wh"] / 1000.0,
+        "field6": telemetry["raw_cumulative_wh"],
+        "field7": telemetry["net_produced_wh"],
         "field8": telemetry["fault_code"],
     }
 
