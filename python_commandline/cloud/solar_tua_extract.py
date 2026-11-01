@@ -1,3 +1,19 @@
+
+"""Solar inverter telemetry collector.
+
+Summary:
+    Reads live inverter telemetry from a Tuya device, estimates energy
+    production, and records the results in PostgreSQL and ThingSpeak.
+    https://thingspeak.mathworks.com/channels/3544921
+    
+Created: 2026-10-21
+Version: 1.0.0
+Version date: 2026-11-01
+Requirements: psycopg, tinytuya
+Configuration: inverter_credentials.json beside this script
+Usage: python solar_tua_extract.py
+"""
+
 import json
 import time
 from pathlib import Path
