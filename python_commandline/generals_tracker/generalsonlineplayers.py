@@ -157,12 +157,12 @@ def sync_users(cursor, configured_users):
                 continue
             cursor.execute(
                 """
-                INSERT INTO tesla.users (user_id, user_name, handle)
-                VALUES (%s, %s, %s)
-                ON CONFLICT (user_id, handle)
-                DO UPDATE SET user_name = EXCLUDED.user_name
+                INSERT INTO tesla.users (user_name, handle)
+                VALUES (%s, %s)
+                ON CONFLICT (user_name, handle)
+                DO NOTHING
                 """,
-                (str(user_name), str(user_name), handle),
+                (str(user_name), handle),
             )
 
 def record_player_sessions(players):
@@ -189,14 +189,14 @@ def record_player_sessions(players):
             users = cursor.fetchall()
             cursor.execute(
                 """
-                SELECT row_id, user_id, duration_mins
+                SELECT row_id, user_row_id, duration_mins
                 FROM tesla.sessions
                 WHERE end_time IS NULL
                 """
             )
             open_sessions = {
-                user_id: (session_id, float(duration))
-                for session_id, user_id, duration in cursor.fetchall()
+                user_row_id: (session_id, float(duration))
+                for session_id, user_row_id, duration in cursor.fetchall()
             }
             cursor.execute("SELECT CURRENT_TIMESTAMP")
             checked_at = cursor.fetchone()[0]
@@ -224,7 +224,7 @@ def record_player_sessions(players):
                 if active_session is None:
                     cursor.execute(
                         """
-                        INSERT INTO tesla.sessions (user_id, start_time, duration_mins)
+                        INSERT INTO tesla.sessions (user_row_id, start_time, duration_mins)
                         VALUES (%s, %s, %s)
                         """,
                         (

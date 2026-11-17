@@ -3,14 +3,13 @@ database tables
     Design a data schema that includes two tables.
     users:
         row_id
-        user_id
-        name
+        user_name
         handle
         last_seen
         
     sessions
         row_id
-        user_id
+        user_row_id
         start_time
         end_time
         duration
@@ -36,3 +35,22 @@ python application
         New session: if this is the first view of the handle, then
         Close old sessions:
             for each of the users that were seen in the last cycle, but not in this cycle, update their sessions "end_time" to be the timestamp of the previous search.
+            
+            
+            
+PHP page
+    write a php page, that uses the apache environment variables listed below.
+        SetEnv CHAMFOX_DB_HOST "spiderman"
+        SetEnv CHAMFOX_DB_PORT "5432"
+        SetEnv CHAMFOX_DB_NAME "chamfox"
+        SetEnv CHAMFOX_DB_USER "will"
+        SetEnv CHAMFOX_DB_PASS "XXXXXXX"
+        
+     The page should include the following informstion:
+     1) who is currently online
+     2) statistics for the players (rolled up by user.user_name)
+        - date last seen online
+        - playtime, per day, for each of the last 7 days
+        - average daily playtime over last 60 days
+        - playtime, per month, for the last 12 months
+            
