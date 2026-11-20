@@ -12,6 +12,17 @@ function formatMinutes(float $minutes): string
     return number_format($minutes / 60, 2) . ' h';
 }
 
+function formatSessionDuration(float $minutes): string
+{
+    $totalMinutes = (int) floor(max(0, $minutes));
+    $hours = intdiv($totalMinutes, 60);
+    $remainingMinutes = $totalMinutes % 60;
+
+    return $hours > 0
+        ? sprintf('%dh %dm', $hours, $remainingMinutes)
+        : sprintf('%dm', $remainingMinutes);
+}
+
 $databaseSettings = [
     'host' => getenv('CHAMFOX_DB_HOST'),
     'port' => getenv('CHAMFOX_DB_PORT'),
@@ -52,7 +63,12 @@ try {
         "SELECT
             u.user_name,
             MAX(u.last_seen) AS last_seen,
-            COALESCE(BOOL_OR(s.row_id IS NOT NULL AND s.end_time IS NULL), FALSE) AS currently_online
+            COALESCE(BOOL_OR(s.row_id IS NOT NULL AND s.end_time IS NULL), FALSE) AS currently_online,
+            COALESCE(
+                MAX(EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - s.start_time)) / 60.0)
+                    FILTER (WHERE s.row_id IS NOT NULL AND s.end_time IS NULL),
+                0
+            ) AS current_session_minutes
         FROM tesla.users AS u
         LEFT JOIN tesla.sessions AS s ON s.user_row_id = u.row_id
         GROUP BY u.user_name
@@ -63,10 +79,38 @@ try {
         $users[$row['user_name']] = [
             'last_seen' => $row['last_seen'],
             'currently_online' => filter_var($row['currently_online'], FILTER_VALIDATE_BOOLEAN),
+            'current_session_minutes' => (float) $row['current_session_minutes'],
+            'last_24_hours' => 0.0,
             'daily' => [],
             'average_total' => 0.0,
             'monthly' => [],
         ];
+    }
+
+    $last24HoursQuery = $connection->query(
+        "SELECT
+            u.user_name,
+            SUM(
+                s.duration_mins
+                * EXTRACT(EPOCH FROM (
+                    LEAST(COALESCE(s.end_time, CURRENT_TIMESTAMP), CURRENT_TIMESTAMP)
+                    - GREATEST(s.start_time, CURRENT_TIMESTAMP - INTERVAL '24 hours')
+                ))
+                / NULLIF(EXTRACT(EPOCH FROM (
+                    COALESCE(s.end_time, CURRENT_TIMESTAMP) - s.start_time
+                )), 0)
+            ) AS minutes
+        FROM tesla.sessions AS s
+        JOIN tesla.users AS u ON u.row_id = s.user_row_id
+        WHERE s.start_time < CURRENT_TIMESTAMP
+            AND COALESCE(s.end_time, CURRENT_TIMESTAMP) > CURRENT_TIMESTAMP - INTERVAL '24 hours'
+        GROUP BY u.user_name"
+    );
+
+    foreach ($last24HoursQuery as $row) {
+        if (isset($users[$row['user_name']])) {
+            $users[$row['user_name']]['last_24_hours'] = (float) $row['minutes'];
+        }
     }
 
     $playtimeQuery = $connection->query(
@@ -198,6 +242,7 @@ foreach ($users as $user) {
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><defs><linearGradient id='bg' x1='0%25' y1='0%25' x2='100%25' y2='100%25'><stop offset='0%25' stop-color='%232b2d26'/><stop offset='100%25' stop-color='%23141512'/></linearGradient><linearGradient id='gold' x1='0%25' y1='0%25' x2='0%25' y2='100%25'><stop offset='0%25' stop-color='%23f5c542'/><stop offset='50%25' stop-color='%23d49b1a'/><stop offset='100%25' stop-color='%238c6208'/></linearGradient></defs><polygon points='18,4 46,4 60,18 60,46 46,60 18,60 4,46 4,18' fill='url(%23bg)' stroke='url(%23gold)' stroke-width='4'/><circle cx='32' cy='32' r='20' fill='none' stroke='%234a4d3f' stroke-width='1.5' stroke-dasharray='6 4'/><path d='M 24 11 L 32 7 L 40 11' fill='none' stroke='%232d7dd2' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/><path d='M 11 42 L 13 50 L 21 52' fill='none' stroke='%23d9381e' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/><path d='M 53 42 L 51 50 L 43 52' fill='none' stroke='%234c9a2a' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/><polygon points='32,16 36.2,26.8 47.8,27.5 38.8,34.8 41.8,46 32,39.6 22.2,46 25.2,34.8 16.2,27.5 27.8,26.8' fill='url(%23gold)' stroke='%23141512' stroke-width='1' stroke-linejoin='round'/></svg>">
     <title>Generals Player Activity</title>
     <style>
         :root {
@@ -296,12 +341,13 @@ foreach ($users as $user) {
                         <th scope="col">Player</th>
                         <th scope="col">Status</th>
                         <th scope="col">Last seen online</th>
+                        <th scope="col">Last 24 hours</th>
                         <th scope="col">60-day daily average</th>
                     </tr>
                     </thead>
                     <tbody>
                     <?php if ($users === []): ?>
-                        <tr><td colspan="4" class="muted">No tracked players found.</td></tr>
+                        <tr><td colspan="5" class="muted">No tracked players found.</td></tr>
                     <?php else: ?>
                         <?php foreach ($users as $name => $user): ?>
                             <?php
@@ -318,7 +364,11 @@ foreach ($users as $user) {
                                     <?php else: ?>
                                         <span class="muted">Never</span>
                                     <?php endif; ?>
+                                    <?php if ($user['currently_online']): ?>
+                                        <br><span class="muted">Current session: <?= escapeHtml(formatSessionDuration($user['current_session_minutes'])) ?></span>
+                                    <?php endif; ?>
                                 </td>
+                                <td><?= escapeHtml(formatMinutes($user['last_24_hours'])) ?></td>
                                 <td><?= escapeHtml(formatMinutes($dailyAverage)) ?></td>
                             </tr>
                         <?php endforeach; ?>

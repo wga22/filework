@@ -50,6 +50,8 @@ PHP page
      1) who is currently online
      2) statistics for the players (rolled up by user.user_name)
         - date last seen online
+        - current session duration when online
+        - playtime over the last 24 hours
         - playtime, per day, for each of the last 7 days
         - average daily playtime over last 60 days
         - playtime, per month, for the last 12 months
